@@ -51,8 +51,8 @@ jobs:
           path: /opt/mozjpeg
           key: ${{ runner.os }}-mozjpeg-v4.1.1
 
-      - name: Install ImageMagick, Optipng
-        run: sudo apt-get update && sudo apt-get install -y imagemagick optipng nasm cmake
+      - name: Install Dependencies
+        run: sudo apt-get update && sudo apt-get install -y imagemagick optipng nasm cmake libpng-dev
 
       - name: Build, Install mozjpeg
         if: steps.cache-mozjpeg.outputs.cache-hit != 'true'
