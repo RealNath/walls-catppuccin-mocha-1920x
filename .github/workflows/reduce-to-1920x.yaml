@@ -52,7 +52,9 @@ jobs:
           key: ${{ runner.os }}-mozjpeg-v4.1.1
 
       - name: Install Dependencies
-        run: sudo apt-get update && sudo apt-get install -y imagemagick optipng nasm cmake libpng-dev
+        run: |
+          sudo apt-get update && sudo apt-get install -y imagemagick optipng nasm cmake libpng-dev
+          sudo chown -R $(whoami):$(whoami) /var/cache/apt/archives
 
       - name: Build, Install mozjpeg
         if: steps.cache-mozjpeg.outputs.cache-hit != 'true'
