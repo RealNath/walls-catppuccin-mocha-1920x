@@ -36,23 +36,45 @@ jobs:
 
           git push origin master
 
-      - name: Cache dependencies
+      - name: Cache apt dependencies
         uses: actions/cache@v4
         with:
           path: /var/cache/apt/archives
-          key: ${{ runner.os }}-apt-${{ hashFiles('.github/reduce-to-1920x.yaml') }}
+          key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/reduce-to-1920x.yaml') }}
           restore-keys: |
             ${{ runner.os }}-apt-
 
-      - name: Install Dependencies
-        run: sudo apt-get update && sudo apt-get install -y imagemagick optipng libjpeg-turbo-progs
+      - name: Cache mozjpeg build
+        id: cache-mozjpeg
+        uses: actions/cache@v4
+        with:
+          path: /opt/mozjpeg
+          key: ${{ runner.os }}-mozjpeg-v4.1.1
+
+      - name: Install ImageMagick, Optipng
+        run: sudo apt-get update && sudo apt-get install -y imagemagick optipng nasm cmake
+
+      - name: Build, Install mozjpeg
+        if: steps.cache-mozjpeg.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch v4.1.1 https://github.com/mozilla/mozjpeg.git
+          cd mozjpeg
+          cmake -G"Unix Makefiles" . -DENABLE_SHARED=OFF
+          make
+          sudo make install
 
       - name: Process new images
         if: steps.sync.outputs.new_files != ''
         run: |
           echo "Processing new files: ${{ steps.sync.outputs.new_files }}"
+          # Resize to 1920x
           echo "${{ steps.sync.outputs.new_files }}" | xargs -r mogrify -resize '1920x>'
-          echo "${{ steps.sync.outputs.new_files }}" | grep -E '\.png$' | xargs -r optipng
+          # Compress PNG (lossless)
+          echo "${{ steps.sync.outputs.new_files }}" | grep -i -E '\.png$' | xargs -r optipng
+          # Compress JPEG (lossless)
+          for file in $(echo "${{ steps.sync.outputs.new_files }}" | grep -i -E '\.jpe?g$'); do
+            /opt/mozjpeg/bin/jpegtran -optimize -progressive -copy none -outfile "$file.tmp" "$file" && mv "$file.tmp" "$file"
+          done
 
       - name: Commit and push if changed
         if: steps.sync.outputs.new_files != ''
