@@ -11,14 +11,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Fetch entire git history
+          # Fetch entire git history and pull LFS files
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT }}
+          lfs: true
+
+      - name: Setup Git LFS
+        run: |
+          git lfs install
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          # Configure git to use the PAT for all https requests
+          git config --global url."https://x-access-token:${{ secrets.PAT }}@github.com/".insteadOf "https://github.com/"
 
       - name: Sync with upstream
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git remote add upstream https://github.com/orangci/walls-catppuccin-mocha.git
           git fetch upstream
           git merge -X ours upstream/master -m "Merge upstream"
@@ -41,7 +48,10 @@ jobs:
 
       - name: Compress PNG images (lossless)
         run: |
-          find . -type f -iname "*.png" -exec optipng {} +
+          # find . -type f -iname "*.png" -exec optipng {} +
+          find . -type f -iname "*.png" -print0 \
+            | head -z -n 5 \
+            | xargs -0 -I{} optipng "{}"
 
       # - name: Compress JPEG images (lossless)
       #   run: |
@@ -49,7 +59,5 @@ jobs:
 
       - name: Commit and push if changed
         run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add -A
           git diff-index --quiet HEAD || git commit -m "Automated image resizing and compression" && git push
