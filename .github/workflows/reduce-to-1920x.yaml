@@ -64,7 +64,7 @@ jobs:
           sudo make install
 
       - name: Process new images
-        if: steps.sync.outputs.new_files != ''
+        # if: steps.sync.outputs.new_files != ''
         run: |
           echo "Processing new files: ${{ steps.sync.outputs.new_files }}"
           # Resize to 1920x
@@ -72,12 +72,13 @@ jobs:
           # Compress PNG (lossless)
           echo "${{ steps.sync.outputs.new_files }}" | grep -i -E '\.png$' | xargs -r optipng
           # Compress JPEG (lossless)
-          for file in $(echo "${{ steps.sync.outputs.new_files }}" | grep -i -E '\.jpe?g$'); do
+          # for file in $(echo "${{ steps.sync.outputs.new_files }}" | grep -i -E '\.jpe?g$'); do
+          for file in $(find . -type f -iname "*.jpe?g"); do
             /opt/mozjpeg/bin/jpegtran -optimize -progressive -copy none -outfile "$file.tmp" "$file" && mv "$file.tmp" "$file"
           done
 
       - name: Commit and push if changed
-        if: steps.sync.outputs.new_files != ''
+        # if: steps.sync.outputs.new_files != ''
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
