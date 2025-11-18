@@ -43,9 +43,9 @@ jobs:
         run: |
           find . -type f -iname "*.png" -exec optipng {} +
 
-      - name: Compress JPEG images (lossless)
-        run: |
-          find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) -exec jpegtran -optimize -progressive -copy none -outfile {} {} +
+      # - name: Compress JPEG images (lossless)
+      #   run: |
+      #     find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) -exec jpegtran -optimize -progressive -copy none -outfile {} {} +
 
       - name: Commit and push if changed
         run: |
