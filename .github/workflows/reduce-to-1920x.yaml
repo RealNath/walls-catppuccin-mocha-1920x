@@ -1,0 +1,55 @@
+name: Reduce image width to 1920px
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 */2 * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Fetch entire git history
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync with upstream
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git remote add upstream https://github.com/orangci/walls-catppuccin-mocha.git
+          git fetch upstream
+          git merge upstream/master -m "Merge upstream"
+          git push origin master
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-apt-${{ hashFiles('.github/reduce-to-1920x.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-
+
+      - name: Install Dependencies
+        run: sudo apt-get update && sudo apt-get install -y imagemagick optipng libjpeg-turbo-progs
+
+      - name: Resize images
+        run: |
+          find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -exec mogrify -resize '1920x>' {} +
+
+      - name: Compress PNG images (lossless)
+        run: |
+          find . -type f -iname "*.png" -exec optipng {} +
+
+      - name: Compress JPEG images (lossless)
+        run: |
+          find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) -exec jpegtran -optimize -progressive -copy none -outfile {} {} +
+
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff-index --quiet HEAD || git commit -m "Automated image resizing and compression" && git push
