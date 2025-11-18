@@ -72,8 +72,7 @@ jobs:
           # Compress PNG (lossless)
           echo "${{ steps.sync.outputs.new_files }}" | grep -i -E '\.png$' | xargs -r optipng
           # Compress JPEG (lossless)
-          # for file in $(echo "${{ steps.sync.outputs.new_files }}" | grep -i -E '\.jpe?g$'); do
-          for file in $(find . -type f -iname "*.jpe?g"); do
+          for file in $(echo "${{ steps.sync.outputs.new_files }}" | grep -i -E '\.jpe?g$'); do
             /opt/mozjpeg/bin/jpegtran -optimize -progressive -copy none -outfile "$file.tmp" "$file" && mv "$file.tmp" "$file"
           done
 
