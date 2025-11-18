@@ -15,13 +15,25 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Sync with upstream
+      - name: Sync with upstream and identify new images
+        id: sync
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git remote add upstream https://github.com/orangci/walls-catppuccin-mocha.git
+
+          # Get the commit hash before merging
+          BEFORE_HASH=$(git rev-parse HEAD)
+
+          git remote add upstream https://github.com/orangci/walls-catppuccin-mocha.git || true
           git fetch upstream
           git merge -X ours upstream/master -m "Merge upstream"
+
+          # Get list of new image files since before the merge
+          # Using git diff-tree to be very specific about the changes
+          # Look for Added (A) or Copied (C) image files
+          NEW_FILES=$(git diff-tree --no-commit-id --name-only -r --diff-filter=AC $BEFORE_HASH HEAD -- "*.png" "*.jpg" "*.jpeg" | xargs)
+          echo "new_files=$NEW_FILES" >> $GITHUB_OUTPUT
+
           git push origin master
 
       - name: Cache dependencies
@@ -35,19 +47,15 @@ jobs:
       - name: Install Dependencies
         run: sudo apt-get update && sudo apt-get install -y imagemagick optipng libjpeg-turbo-progs
 
-      - name: Resize images
+      - name: Process new images
+        if: steps.sync.outputs.new_files != ''
         run: |
-          find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -exec mogrify -resize '1920x>' {} +
-
-      - name: Compress PNG images (lossless)
-        run: |
-          find . -type f -iname "*.png" -exec optipng {} +
-
-      # - name: Compress JPEG images (lossless)
-      #   run: |
-      #     find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) -exec jpegtran -optimize -progressive -copy none -outfile {} {} +
+          echo "Processing new files: ${{ steps.sync.outputs.new_files }}"
+          echo "${{ steps.sync.outputs.new_files }}" | xargs -r mogrify -resize '1920x>'
+          echo "${{ steps.sync.outputs.new_files }}" | grep -E '\.png$' | xargs -r optipng
 
       - name: Commit and push if changed
+        if: steps.sync.outputs.new_files != ''
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
