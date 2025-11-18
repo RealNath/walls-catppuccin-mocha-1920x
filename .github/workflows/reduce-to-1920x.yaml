@@ -41,7 +41,10 @@ jobs:
 
       - name: Compress PNG images (lossless)
         run: |
-          find . -type f -iname "*.png" -exec optipng {} +
+          # find . -type f -iname "*.png" -exec optipng {} +
+          find . -type f -iname "*.png" -print0 \
+            | head -z -n 5 \
+            | xargs -0 -I{} optipng "{}"
 
       # - name: Compress JPEG images (lossless)
       #   run: |
